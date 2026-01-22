@@ -9,14 +9,13 @@ from typing import List, Optional, Union
 
 from transformers.image_processing_utils import BatchFeature, get_patch_output_size, select_best_resolution
 from transformers.image_processing_utils_fast import (
-    BASE_IMAGE_PROCESSOR_FAST_DOCSTRING,
-    BASE_IMAGE_PROCESSOR_FAST_DOCSTRING_PREPROCESS,
     BaseImageProcessorFast,
     DefaultFastImageProcessorKwargs,
     divide_to_patches,
     group_images_by_shape,
     reorder_images,
 )
+from transformers.video_utils import VideoInput, make_batched_videos
 from transformers.image_utils import (
     OPENAI_CLIP_MEAN,
     OPENAI_CLIP_STD,
@@ -24,12 +23,10 @@ from transformers.image_utils import (
     IMAGENET_STANDARD_STD, # 0.5, 0.5, 0.5
     ChannelDimension,
     ImageInput,
-    VideoInput,
     PILImageResampling,
     SizeDict,
     get_image_size,
     make_flat_list_of_images,
-    make_batched_videos,
     validate_kwargs
 )
 from transformers.processing_utils import Unpack
@@ -81,7 +78,6 @@ class Eagle3_VLFastImageProcessorKwargs(DefaultFastImageProcessorKwargs):
 
 @add_start_docstrings(
     "Constructs a fast ConvNeXT image processor. Based on [`SiglipImageProcessor`] with incorporation of processing each video frame.",
-    BASE_IMAGE_PROCESSOR_FAST_DOCSTRING,
     """
         image_grid_pinpoints (`List[List[int]]`, *optional*):
             A list of possible resolutions to use for processing high resolution images. The best resolution is selected
@@ -112,7 +108,6 @@ class Eagle3_VLImageProcessorFast(BaseImageProcessorFast):
         super().__init__(**kwargs)
 
     @add_start_docstrings(
-        BASE_IMAGE_PROCESSOR_FAST_DOCSTRING_PREPROCESS,
         """
             do_pad (`bool`, *optional*):
                     Whether to pad the image. If `True`, will pad the patch dimension of the images in the batch to the largest
@@ -125,6 +120,7 @@ class Eagle3_VLImageProcessorFast(BaseImageProcessorFast):
     def _prepare_images_structure(
         self,
         images: ImageInput,
+        expected_ndims: int = 3,
     ) -> ImageInput:
         """
         Prepare the images structure for processing.
@@ -153,13 +149,15 @@ class Eagle3_VLImageProcessorFast(BaseImageProcessorFast):
         image_std: Optional[Union[float, List[float]]],
         do_pad: bool,
         return_tensors: Optional[Union[str, TensorType]],
+        disable_grouping: bool | None = False,
+        pad_size: SizeDict = None,
     ) -> BatchFeature:
 
         image_sizes = [get_image_size(image, channel_dim=ChannelDimension.FIRST) for image in images]
 
         # Group images by size for further processing
         # Needed in case do_resize is False, or resize returns images with different sizes
-        grouped_images, grouped_images_index = group_images_by_shape(images)
+        grouped_images, grouped_images_index = group_images_by_shape(images, disable_grouping=disable_grouping)
         processed_images_grouped = {}
         for shape, stacked_images in grouped_images.items():
             # Fused rescale and normalize
@@ -211,7 +209,7 @@ class Eagle3_VLImageProcessorFast(BaseImageProcessorFast):
         )
 
         # Pop kwargs that are not needed in _preprocess
-        kwargs.pop("default_to_square")
+        kwargs.pop("default_to_square", None)
         kwargs.pop("data_format")
         if images is not None:
             return self._preprocess(images, **kwargs)

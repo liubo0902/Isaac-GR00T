@@ -7,6 +7,7 @@ import av
 import cv2
 import numpy as np
 import torchvision
+import imageio.v3 as iio
 
 
 # Import decord with graceful fallback
@@ -262,7 +263,12 @@ def get_frames_by_indices(
     video_backend: str = "ffmpeg",
     video_backend_kwargs: dict = {},
 ) -> np.ndarray:
-    if video_backend == "decord":
+    video_backend = "pyav"
+    # print(f'video_backend_kwargs: {video_backend_kwargs}, video_backend: {video_backend}, video_path: {video_path}')
+    if video_backend == "pyav":
+        video = iio.imread(video_path, plugin="pyav", )
+        return video[indices[0]:indices[-1]+1]
+    elif video_backend == "decord":
         if not DECORD_AVAILABLE:
             raise ImportError("decord is not available. Install it with: pip install decord")
         vr = decord.VideoReader(video_path, **video_backend_kwargs)

@@ -41,7 +41,8 @@ import numpy as np
 
 from transformers.feature_extraction_utils import BatchFeature
 from transformers.image_processing_utils import select_best_resolution
-from transformers.image_utils import ImageInput, VideoInput, get_image_size, to_numpy_array
+from transformers.video_utils import VideoInput
+from transformers.image_utils import ImageInput, get_image_size, to_numpy_array
 from transformers.processing_utils import ProcessingKwargs, ProcessorMixin, Unpack
 from transformers.tokenization_utils_base import PreTokenizedInput, TextInput
 from transformers.utils import logging
@@ -894,7 +895,8 @@ class Eagle3_VLProcessor(ProcessorMixin):
             if hasattr(processor, key):
                 setattr(processor, key, kwargs.pop(key))
 
-        kwargs.update(unused_kwargs)
+        for unused_kwarg in unused_kwargs:
+            kwargs.update(unused_kwarg)
         logger.info(f"Processor {processor}")
         if return_unused_kwargs:
             return processor, kwargs
